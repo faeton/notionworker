@@ -1,26 +1,34 @@
-// Uncomment and set this object if you prefer to hardcode settings for a single domain.
-// When commented out or undefined, the script will use KV storage for configuration.
-/*
+/* CONFIGURATION SECTION */
+
+// Uncomment and define the following object to use a static, manual configuration.
+// When commented out, the script will fetch settings from KV storage.
+ /*
 const manualConfig = {
   MY_DOMAIN: 'example.com', // your custom domain
   SLUG_TO_PAGE: {
-    // Map slugs to page IDs.
-    home: 'pageId_home',
-    about: 'pageId_about'
+    "": "homepage-notion-id",
+    "about": "notion-page-id-about",
+    "contact": "notion-page-id-contact"
   },
-  PAGE_TITLE: 'Example Site',
-  PAGE_DESCRIPTION: 'This is an example description.',
-  GOOGLE_FONT: 'Roboto',
-  CUSTOM_SCRIPT: ''
+  PAGE_TITLE: "Your Site Title",
+  PAGE_DESCRIPTION: "Your site description for SEO",
+  GOOGLE_FONT: "Roboto",
+  CUSTOM_SCRIPT: ""  // any custom scripts as a string
 };
 */
 
+// Set your Notion username; this is used to form the target Notion URL.
 const MY_NOTION_USERNAME = 'faeton';
+
+// KV configuration cache for multi-domain usage.
 const domainConfigCache = new Map();
 
+/**
+ * Retrieves configuration for the given hostname.
+ * If a manualConfig is defined, uses that; otherwise, it fetches from KV storage and caches the result.
+ */
 async function getDomainConfig(hostname) {
   if (typeof manualConfig !== 'undefined') {
-    // Use manual configuration.
     const config = JSON.parse(JSON.stringify(manualConfig));
     config.MY_DOMAIN = hostname;
     config.PAGE_TO_SLUG = {};
@@ -35,7 +43,6 @@ async function getDomainConfig(hostname) {
     return config;
   }
   
-  // Otherwise, use KV storage with caching.
   if (domainConfigCache.has(hostname)) {
     return domainConfigCache.get(hostname);
   }
@@ -61,6 +68,9 @@ addEventListener("fetch", event => {
   event.respondWith(fetchAndApply(event.request));
 });
 
+/**
+ * Generates a sitemap XML using the provided configuration.
+ */
 function generateSitemap({ MY_DOMAIN, slugs }) {
   const urls = slugs.map(slug => `<url><loc>https://${MY_DOMAIN}/${slug}</loc></url>`);
   return `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.join('')}</urlset>`;
@@ -72,6 +82,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type"
 };
 
+/**
+ * Handles OPTIONS requests for CORS.
+ */
 function handleOptions(request) {
   if (
     request.headers.get("Origin") &&
@@ -83,22 +96,30 @@ function handleOptions(request) {
   return new Response(null, { headers: { Allow: "GET, HEAD, POST, PUT, OPTIONS" } });
 }
 
+/**
+ * Main request handler.
+ * - Rewrites requests to target Notion based on MY_NOTION_USERNAME.
+ * - Handles robots.txt and sitemap.xml.
+ * - Redirects using the SLUG_TO_PAGE mapping.
+ * - Invokes HTML rewriting to inject meta tags, custom fonts, and scripts.
+ */
 async function fetchAndApply(request) {
   const url = new URL(request.url);
   const hostname = url.hostname.replace(/^www\./, '');
   const config = await getDomainConfig(hostname);
-  console.log("Getting domain configuration for", url.hostname, config);
+  console.log("Configuration for", url.hostname, config);
   if (!config) {
-    return new Response('Domain not found in domainConfig', { status: 404 });
+    return new Response('Domain not found in configuration', { status: 404 });
   }
 
   if (request.method === "OPTIONS") {
     return handleOptions(request);
   }
 
-  // Rewrite hostname so that further requests go to Notion.
+  // Rewrite the hostname so that subsequent fetches target Notion.
   url.hostname = `${MY_NOTION_USERNAME}.notion.site`;
 
+  // Handle special paths.
   if (url.pathname === "/robots.txt") {
     return new Response(`Sitemap: https://${config.MY_DOMAIN}/sitemap.xml`);
   }
@@ -111,7 +132,7 @@ async function fetchAndApply(request) {
 
   let response;
   if (url.pathname.startsWith("/app") && url.pathname.endsWith("js")) {
-    // Rewrite Notion JS scripts.
+    // Rewrite Notion JavaScript assets.
     response = await fetch(url.toString());
     let body = await response.text();
     body = body.replace(/www\.notion\.so/g, config.MY_DOMAIN)
@@ -121,7 +142,7 @@ async function fetchAndApply(request) {
     response.headers.set("Content-Type", "application/x-javascript");
     return response;
   } else if (url.pathname.startsWith("/api")) {
-    // Notion API rewriting.
+    // Forward Notion API calls.
     response = await fetch(url.toString(), {
       body: url.pathname.startsWith('/api/v3/getPublicPageData') ? null : request.body,
       headers: {
@@ -135,25 +156,25 @@ async function fetchAndApply(request) {
     response.headers.set("Access-Control-Allow-Origin", "*");
     return response;
   } else if (config.SLUG_TO_PAGE[url.pathname.slice(1)] !== undefined) {
-    // Directly redirect based on slug.
+    // Redirect based on the custom slug.
     const pageId = config.SLUG_TO_PAGE[url.pathname.slice(1)];
-    console.log('Redirect with pageId:', pageId, url.pathname);
+    console.log('Redirecting based on slug:', pageId, url.pathname);
     return Response.redirect(`https://${config.MY_DOMAIN}/${pageId}`, 301);
   } else if (
     !config.pages.includes(url.pathname.slice(1)) &&
     /[0-9a-f]{32}/.test(url.pathname.slice(1))
   ) {
-    // If the URL looks like a page ID but isn’t in our pages, redirect to the main page.
-    console.log('Redirect to main page:', url.pathname);
+    // If the URL appears to be a Notion page ID not in our mapping, redirect to the main page.
+    console.log('Redirecting to main page:', url.pathname);
     return Response.redirect(`https://${config.MY_DOMAIN}`, 301);
   } else {
-    // For all other requests, fetch the page and strip certain security headers.
+    // Default: fetch the page as-is.
     response = await fetch(url.toString(), {
       body: request.body,
       headers: request.headers,
       method: request.method
     });
-    console.log('Default. Getting:', url.toString());
+    console.log('Fetching default Notion page:', url.toString());
     response = new Response(response.body, response);
     response.headers.delete("Content-Security-Policy");
     response.headers.delete("X-Content-Security-Policy");
@@ -161,6 +182,11 @@ async function fetchAndApply(request) {
   return appendJavascript(response, config);
 }
 
+/* ------------------ HTML Rewriter Classes ------------------ */
+
+/**
+ * Rewrites meta tags to update SEO details.
+ */
 class MetaRewriter {
   constructor({ PAGE_TITLE, PAGE_DESCRIPTION, MY_DOMAIN }) {
     this.PAGE_TITLE = PAGE_TITLE;
@@ -200,6 +226,9 @@ class MetaRewriter {
   }
 }
 
+/**
+ * Rewrites the head to inject custom fonts and styles.
+ */
 class HeadRewriter {
   constructor({ GOOGLE_FONT }) {
     this.GOOGLE_FONT = GOOGLE_FONT;
@@ -215,14 +244,8 @@ class HeadRewriter {
     }
     element.append(
       `<style>
-         div.notion-topbar {display: none !important;}
-         div.notion-topbar > div > div:nth-child(3),
-         div.notion-topbar > div > div:nth-child(4),
-         div.notion-topbar > div > div:nth-child(5),
-         div.notion-topbar > div > div:nth-child(6),
-         div.notion-topbar-mobile > div:nth-child(3),
-         div.notion-topbar-mobile > div > div:nth-child(4),
-         div.notion-topbar-mobile > div > div:nth-child(5) { display: none !important; }
+         div.notion-topbar,
+         div.notion-topbar-mobile { display: none !important; }
          div.notion-topbar > div > div:nth-child(1n).toggle-mode,
          div.notion-topbar-mobile > div:nth-child(1n).toggle-mode { display: block !important; }
        </style>`,
@@ -231,6 +254,9 @@ class HeadRewriter {
   }
 }
 
+/**
+ * Rewrites the body to inject custom JavaScript for dark mode toggling and URL rewriting.
+ */
 class BodyRewriter {
   constructor({ SLUG_TO_PAGE, CUSTOM_SCRIPT, MY_DOMAIN, PAGE_TO_SLUG, pages, slugs }) {
     this.SLUG_TO_PAGE = SLUG_TO_PAGE;
@@ -319,12 +345,15 @@ class BodyRewriter {
           arguments[1] = arguments[1].replace('${config.MY_DOMAIN}', '${MY_NOTION_USERNAME}.notion.site');
           return open.apply(this, arguments);
         };
-      </script>${this.CUSTOM_SCRIPT}`,
+      </script>${CUSTOM_SCRIPT}`,
       { html: true }
     );
   }
 }
 
+/**
+ * Applies HTML rewriting using the defined rewriter classes.
+ */
 async function appendJavascript(res, config) {
   return new HTMLRewriter()
     .on("title", new MetaRewriter(config))
