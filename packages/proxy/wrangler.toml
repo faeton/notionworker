@@ -1,0 +1,21 @@
+name = "notionworker-proxy"
+main = "src/index.ts"
+compatibility_date = "2024-12-30"
+
+# D1 database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "notionworker-db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# KV namespace binding for cache layer
+[[kv_namespaces]]
+binding = "SITE_CACHE"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Routes - uncomment and configure for production
+# [env.production]
+# routes = [
+#   { pattern = "*.bl3s.com/*", zone_name = "bl3s.com" },
+#   { pattern = "*.ez.mt/*", zone_name = "ez.mt" },
+# ]
