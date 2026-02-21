@@ -1,0 +1,19 @@
+{
+  "name": "@notionworker/static",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "notion-static": "./dist/cli.js"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "generate": "node dist/cli.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
+  }
+}
