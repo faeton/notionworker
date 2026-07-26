@@ -13,7 +13,7 @@ webhooksRouter.post("/notion", async (c) => {
   const body = await c.req.text();
   const signature = c.req.header("X-Notion-Signature") ?? "";
 
-  const event = JSON.parse(body) as {
+  let event: {
     type?: string;
     verification_token?: string;
     data?: {
@@ -21,20 +21,27 @@ webhooksRouter.post("/notion", async (c) => {
       [key: string]: unknown;
     };
   };
+  try {
+    event = JSON.parse(body);
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 400);
+  }
 
-  // Initial subscription handshake: Notion POSTs { verification_token } once.
-  // Log it so it can be pasted into the Notion integration settings.
+  // Initial subscription handshake: Notion POSTs { verification_token } once,
+  // before any secret exists to verify against. Log it so it can be pasted
+  // into the Notion integration settings (and set as NOTION_WEBHOOK_SECRET).
   if (event.verification_token) {
     console.log(`[webhook] Verification token received: ${event.verification_token}`);
     return c.json({ ok: true });
   }
 
-  // Verify signature on all regular events
-  if (c.env.NOTION_WEBHOOK_SECRET) {
-    const valid = await verifyWebhookSignature(body, signature, c.env.NOTION_WEBHOOK_SECRET);
-    if (!valid) {
-      return c.json({ error: "Invalid signature" }, 401);
-    }
+  // Fail closed: without a configured secret, events cannot be authenticated
+  if (!c.env.NOTION_WEBHOOK_SECRET) {
+    return c.json({ error: "Webhook secret not configured" }, 503);
+  }
+  const valid = await verifyWebhookSignature(body, signature, c.env.NOTION_WEBHOOK_SECRET);
+  if (!valid) {
+    return c.json({ error: "Invalid signature" }, 401);
   }
 
   // Handle page content updates
@@ -42,19 +49,16 @@ webhooksRouter.post("/notion", async (c) => {
     const notionPageId = event.data.page_id.replace(/-/g, "");
     const d1 = drizzle(c.env.DB);
 
-    // Find which site owns this page
+    // Find every site that maps this page — the same Notion page can be
+    // published on multiple sites
     const result = await d1
-      .select({
-        siteId: pages.siteId,
-        notionPageId: pages.notionPageId,
-      })
+      .select({ siteId: pages.siteId })
       .from(pages)
-      .where(eq(pages.notionPageId, notionPageId))
-      .limit(1);
+      .where(eq(pages.notionPageId, notionPageId));
 
-    if (result.length > 0) {
-      const { siteId } = result[0];
+    const siteIds = [...new Set(result.map((r) => r.siteId))];
 
+    for (const siteId of siteIds) {
       // Get user's access token for this site
       const siteResult = await d1
         .select({ accessToken: users.accessToken })
@@ -76,7 +80,7 @@ webhooksRouter.post("/notion", async (c) => {
         });
         console.log(`[webhook] Re-rendered page ${notionPageId} for site ${siteId}`);
       } catch (err) {
-        console.error(`[webhook] Failed to re-render page ${notionPageId}: ${err}`);
+        console.error(`[webhook] Failed to re-render page ${notionPageId} for site ${siteId}: ${err}`);
       }
     }
   }

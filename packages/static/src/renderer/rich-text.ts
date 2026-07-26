@@ -1,5 +1,5 @@
 import type { Decoration, RichText } from "../types.js";
-import type { ImageMap } from "../fetcher/image-downloader.js";
+import type { ImageMap } from "../types.js";
 
 function escapeHtml(text: string): string {
   return text
@@ -12,6 +12,13 @@ function escapeHtml(text: string): string {
 /** Convert newlines to <br> tags */
 function nl2br(text: string): string {
   return text.replace(/\n/g, "<br>");
+}
+
+/** Only allow safe URL schemes in generated links/embeds (blocks javascript: etc.) */
+export function safeUrl(url: string): string {
+  const trimmed = url.trim();
+  if (/^(https?:|mailto:|\/|#)/i.test(trimmed)) return trimmed;
+  return "#";
 }
 
 /** Map Notion color names to CSS classes */
@@ -46,7 +53,7 @@ function renderSegment(text: string, decorations?: Decoration[], imageMap?: Imag
         html = `<code>${html}</code>`;
         break;
       case "a":
-        html = `<a href="${escapeHtml(dec[1] ?? "")}">${html}</a>`;
+        html = `<a href="${escapeHtml(safeUrl(dec[1] ?? ""))}">${html}</a>`;
         break;
       case "h":
         html = `<span class="${colorToClass(dec[1] ?? "")}">${html}</span>`;

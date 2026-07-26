@@ -1,5 +1,9 @@
 import type { SiteConfig } from "../types.js";
 
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export async function handleNotionJs(
   url: URL,
   config: SiteConfig
@@ -14,15 +18,17 @@ export async function handleNotionJs(
     .replace(/www\.notion\.so/g, config.hostname)
     .replace(/notion\.so/g, config.hostname)
     .replace(
-      new RegExp(`${config.notionUsername}\\.notion\\.site`, "g"),
+      new RegExp(`${escapeRegExp(config.notionUsername)}\\.notion\\.site`, "g"),
       config.hostname
     );
 
+  // Build fresh headers: the body was decompressed by .text(), so the upstream
+  // Content-Encoding/Content-Length headers no longer describe it
   return new Response(body, {
-    ...response,
+    status: response.status,
     headers: {
-      ...Object.fromEntries(response.headers.entries()),
       "Content-Type": "application/x-javascript",
+      "Cache-Control": response.headers.get("Cache-Control") ?? "public, max-age=3600",
     },
   });
 }

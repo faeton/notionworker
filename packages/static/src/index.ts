@@ -13,8 +13,10 @@ export type {
 export { normalizePageId, parseNotionUrl, loadPageChunk, fetchPage } from "./fetcher/api.js";
 export { fetchPageOfficial, loadPageBlocksOfficial, searchPages } from "./fetcher/official-api.js";
 export { crawlPages } from "./fetcher/crawler.js";
-export { downloadImages } from "./fetcher/image-downloader.js";
-export type { ImageMap } from "./fetcher/image-downloader.js";
+// downloadImages (filesystem version) is deliberately NOT re-exported here:
+// it imports node:fs/node:crypto, which would break Cloudflare Worker bundles.
+// The CLI imports it directly from ./fetcher/image-downloader.js.
+export type { ImageMap } from "./types.js";
 export { downloadImagesToR2 } from "./fetcher/image-r2.js";
 export type { R2Bucket } from "./fetcher/image-r2.js";
 

@@ -1,6 +1,6 @@
 import type { NotionBlock } from "../../types.js";
-import type { ImageMap } from "../../fetcher/image-downloader.js";
-import { renderRichText } from "../rich-text.js";
+import type { ImageMap } from "../../types.js";
+import { renderRichText, safeUrl } from "../rich-text.js";
 
 function escapeHtml(text: string): string {
   return text
@@ -33,7 +33,7 @@ export function renderMediaBlock(
 
       return (
         `<figure>` +
-        `<img src="${escapeHtml(resolved)}" alt="${caption ? caption.replace(/<[^>]*>/g, "") : ""}" loading="lazy"${widthAttr}>` +
+        `<img src="${escapeHtml(safeUrl(resolved))}" alt="${caption ? caption.replace(/<[^>]*>/g, "") : ""}" loading="lazy"${widthAttr}>` +
         (caption ? `<figcaption>${caption}</figcaption>` : "") +
         `</figure>\n`
       );
@@ -46,13 +46,13 @@ export function renderMediaBlock(
       const cover = block.format?.bookmark_cover;
 
       return (
-        `<a href="${escapeHtml(url)}" class="bookmark" target="_blank" rel="noopener">` +
+        `<a href="${escapeHtml(safeUrl(url))}" class="bookmark" target="_blank" rel="noopener">` +
         `<div class="bookmark-info">` +
         `<div class="bookmark-title">${title}</div>` +
         (description ? `<div class="bookmark-description">${description}</div>` : "") +
         `<div class="bookmark-url">${escapeHtml(url)}</div>` +
         `</div>` +
-        (cover ? `<img class="bookmark-cover" src="${escapeHtml(resolveImage(cover, imageMap))}" loading="lazy">` : "") +
+        (cover ? `<img class="bookmark-cover" src="${escapeHtml(safeUrl(resolveImage(cover, imageMap)))}" loading="lazy">` : "") +
         `</a>\n`
       );
     }
@@ -61,14 +61,14 @@ export function renderMediaBlock(
       const src = block.properties?.source?.[0]?.[0] ?? block.format?.display_source ?? "";
       // Detect embed URLs (YouTube, Vimeo)
       if (/youtube\.com|youtu\.be|vimeo\.com/.test(src)) {
-        return `<div class="video-embed"><iframe src="${escapeHtml(src)}" frameborder="0" allowfullscreen loading="lazy"></iframe></div>\n`;
+        return `<div class="video-embed"><iframe src="${escapeHtml(safeUrl(src))}" frameborder="0" allowfullscreen loading="lazy"></iframe></div>\n`;
       }
-      return `<video src="${escapeHtml(src)}" controls></video>\n`;
+      return `<video src="${escapeHtml(safeUrl(src))}" controls></video>\n`;
     }
 
     case "embed": {
       const src = block.properties?.source?.[0]?.[0] ?? block.format?.display_source ?? "";
-      return `<div class="embed"><iframe src="${escapeHtml(src)}" frameborder="0" loading="lazy"></iframe></div>\n`;
+      return `<div class="embed"><iframe src="${escapeHtml(safeUrl(src))}" frameborder="0" loading="lazy"></iframe></div>\n`;
     }
 
     default:

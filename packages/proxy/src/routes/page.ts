@@ -84,9 +84,16 @@ export async function handlePage(
   console.log(`[proxy] R2 miss, proxying live: ${url.pathname}`);
   url.hostname = `${config.notionUsername}.notion.site`;
 
+  // Forward only benign headers — never the visitor's cookies/authorization
+  const upstreamHeaders = new Headers();
+  for (const name of ["accept", "accept-language", "user-agent"]) {
+    const value = request.headers.get(name);
+    if (value) upstreamHeaders.set(name, value);
+  }
+
   const response = await fetch(url.toString(), {
     body: request.body,
-    headers: request.headers,
+    headers: upstreamHeaders,
     method: request.method,
   });
 

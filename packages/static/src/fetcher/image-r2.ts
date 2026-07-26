@@ -3,16 +3,42 @@
  * Adapted from image-downloader.ts but uses R2 instead of filesystem,
  * and crypto.subtle instead of node:crypto.
  */
-import type { NotionBlock, PageData } from "../types.js";
+import type { ImageMap, NotionBlock, PageData } from "../types.js";
 
-/** Map of original URL → R2 public URL */
-export type ImageMap = Map<string, string>;
+export type { ImageMap };
 
 const MAX_IMAGE_WIDTH = 1440;
 const ICON_WIDTH = 160;
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024; // 15 MB per image
 
 function isUrl(str: string): boolean {
   return str.startsWith("http://") || str.startsWith("https://");
+}
+
+/**
+ * URLs come from tenant-controlled Notion content — only fetch https,
+ * and never targets that look like internal/loopback addresses.
+ */
+function isSafeFetchUrl(raw: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:") return false;
+  const host = url.hostname.toLowerCase();
+  if (
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".local") ||
+    host.endsWith(".internal") ||
+    /^(\d{1,3}\.){3}\d{1,3}$/.test(host) || // raw IPv4
+    host.startsWith("[") // raw IPv6
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function isNotionS3(url: string): boolean {
@@ -163,6 +189,11 @@ export async function downloadImagesToR2(
         fetchUrl = originalUrl;
       }
 
+      if (!isSafeFetchUrl(fetchUrl)) {
+        console.warn(`[image-r2] Skipping unsafe URL ${fetchUrl.slice(0, 80)}`);
+        continue;
+      }
+
       // Download the image
       const res = await fetch(fetchUrl, { headers });
       if (!res.ok) {
@@ -170,8 +201,22 @@ export async function downloadImagesToR2(
         continue;
       }
 
-      const buffer = await res.arrayBuffer();
       const contentType = res.headers.get("content-type") ?? undefined;
+      if (contentType && !contentType.startsWith("image/")) {
+        console.warn(`[image-r2] Skipping non-image content-type ${contentType} for ${originalUrl.slice(0, 80)}`);
+        continue;
+      }
+      const contentLength = Number(res.headers.get("content-length") ?? 0);
+      if (contentLength > MAX_IMAGE_BYTES) {
+        console.warn(`[image-r2] Skipping oversized image (${contentLength} bytes) ${originalUrl.slice(0, 80)}`);
+        continue;
+      }
+
+      const buffer = await res.arrayBuffer();
+      if (buffer.byteLength > MAX_IMAGE_BYTES) {
+        console.warn(`[image-r2] Skipping oversized image (${buffer.byteLength} bytes) ${originalUrl.slice(0, 80)}`);
+        continue;
+      }
       const hash = (await sha256Hex(buffer)).slice(0, 16);
       const ext = getExtension(originalUrl, contentType);
       const r2Key = `${siteId}/images/${hash}.${ext}`;

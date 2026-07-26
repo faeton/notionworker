@@ -15,6 +15,7 @@ export const sites = sqliteTable(
     userId: text("user_id").references(() => users.id),
     plan: text("plan").default("free"),
     isPublic: integer("is_public", { mode: "boolean" }).notNull().default(true),
+    lastPublishedAt: integer("last_published_at", { mode: "timestamp" }),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
   },

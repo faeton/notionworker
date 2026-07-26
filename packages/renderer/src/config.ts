@@ -4,7 +4,7 @@
  */
 import { eq } from "drizzle-orm";
 import { drizzle, type DrizzleD1Database } from "drizzle-orm/d1";
-import { sites, pages, themes } from "@notionworker/db";
+import { sites, pages, themes, domains, platformDomains } from "@notionworker/db";
 import type { SiteConfig as StaticSiteConfig } from "@notionworker/static";
 
 /** Page config as stored in D1 */
@@ -59,11 +59,30 @@ export async function loadRenderConfig(
 
   const [siteTheme] = await d1.select().from(themes).where(eq(themes.siteId, siteId)).limit(1);
 
+  // Resolve the canonical hostname: primary active custom domain if any,
+  // otherwise the platform subdomain. Needed for sitemap/robots URLs.
+  const siteDomains = await d1
+    .select({ hostname: domains.hostname, isPrimary: domains.isPrimary, status: domains.status })
+    .from(domains)
+    .where(eq(domains.siteId, siteId));
+  const activeDomains = siteDomains.filter((d) => d.status === "active");
+  const primaryDomain = activeDomains.find((d) => d.isPrimary) ?? activeDomains[0];
+
+  let hostname = primaryDomain?.hostname ?? "";
+  if (!hostname) {
+    const [platform] = await d1
+      .select({ domain: platformDomains.domain })
+      .from(platformDomains)
+      .where(eq(platformDomains.id, site.platformDomainId))
+      .limit(1);
+    if (platform) hostname = `${site.subdomain}.${platform.domain}`;
+  }
+
   return {
     siteId: site.id,
     siteName: site.name,
     notionUsername: site.notionUsername,
-    hostname: "", // Will be resolved when needed
+    hostname,
     pages: sitePages.map((p) => ({
       notionPageId: p.notionPageId,
       slug: p.slug,

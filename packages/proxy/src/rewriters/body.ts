@@ -23,7 +23,7 @@ export class BodyRewriter implements HTMLRewriterElementContentHandlers {
       const navLinks = config.theme.navigationLinks
         .map(
           (link) =>
-            `<li><a href="/${link.slug}"${link.url ? ` data-external="${link.url}"` : ""}>${link.label}</a></li>`
+            `<li><a href="/${this.escapeHtml(link.slug)}"${link.url ? ` data-external="${this.escapeHtml(link.url)}"` : ""}>${this.escapeHtml(link.label)}</a></li>`
         )
         .join("");
 
@@ -40,12 +40,12 @@ export class BodyRewriter implements HTMLRewriterElementContentHandlers {
     element.append(
       `<script>
 (function() {
-  var SLUG_TO_PAGE = ${JSON.stringify(config.slugToPage)};
-  var PAGE_TO_SLUG = ${JSON.stringify(config.pageToSlug)};
-  var slugs = ${JSON.stringify(config.slugs)};
-  var pages = ${JSON.stringify(config.pageIds)};
-  var notionHost = '${config.notionUsername}.notion.site';
-  var myDomain = '${config.hostname}';
+  var SLUG_TO_PAGE = ${this.safeJson(config.slugToPage)};
+  var PAGE_TO_SLUG = ${this.safeJson(config.pageToSlug)};
+  var slugs = ${this.safeJson(config.slugs)};
+  var pages = ${this.safeJson(config.pageIds)};
+  var notionHost = ${this.safeJson(`${config.notionUsername}.notion.site`)};
+  var myDomain = ${this.safeJson(config.hostname)};
 
   function getPage() { return location.pathname.slice(-32); }
   function getSlug() { return location.pathname.slice(1); }
@@ -142,5 +142,10 @@ export class BodyRewriter implements HTMLRewriterElementContentHandlers {
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  /** JSON for inline <script> use — "<" escaped so "</script>" in data can't break out */
+  private safeJson(value: unknown): string {
+    return JSON.stringify(value).replace(/</g, "\\u003c");
   }
 }

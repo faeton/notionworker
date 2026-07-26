@@ -1,5 +1,5 @@
 import type { PageData, SiteConfig } from "../types.js";
-import type { ImageMap } from "../fetcher/image-downloader.js";
+import type { ImageMap } from "../types.js";
 import { renderBlockList } from "../renderer/blocks.js";
 import { generateCss } from "./css.js";
 

@@ -86,6 +86,7 @@ wrangler r2 bucket create notionworker-content
 cd packages/proxy
 wrangler d1 execute notionworker-db --remote --file=../db/drizzle/0000_init.sql
 wrangler d1 execute notionworker-db --remote --file=../db/drizzle/0001_users.sql
+wrangler d1 execute notionworker-db --remote --file=../db/drizzle/0002_last_published.sql
 # optional test data:
 wrangler d1 execute notionworker-db --remote --file=../db/seed.sql
 
@@ -117,6 +118,13 @@ cd packages/db && npx drizzle-kit generate   # generate migration from schema ch
 ## Status
 
 Functional and typechecked, but young — it has not seen heavy production traffic. Review the code (especially `packages/api`) before hosting other people's content, and open issues/PRs for anything you find.
+
+Known limitations:
+
+- **No domain-ownership verification** — adding a custom domain doesn't require proving you control it (e.g. a TXT-record challenge). Until that exists, treat custom-domain onboarding as trusted-users-only.
+- **No automated test suite yet** — only `scripts/smoke-test.sh` against a deployed site.
+- **Config edits can stay cached up to ~1 minute** on warm proxy isolates (in-memory layer); the KV layer is purged immediately.
+- **No billing integration** — the `plan` column gates custom domains but nothing sets it yet.
 
 ## Contributing
 

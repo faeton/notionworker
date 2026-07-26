@@ -43,4 +43,8 @@ export async function publishPage(
 
   // Store in R2
   await putHtml(env.CONTENT, siteConfig.siteId, pageEntry.slug, html);
+  // A homepage with a non-empty slug must also be served at the site root
+  if (pageEntry.isHomepage && pageEntry.slug !== "") {
+    await putHtml(env.CONTENT, siteConfig.siteId, "", html);
+  }
 }

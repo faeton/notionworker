@@ -85,12 +85,17 @@ export async function renderSiteFromConfig(
 
   // 3. Render and upload each page
   const renderConfig = buildRenderConfig(config);
+  const homepageSlugs = new Set(config.pages.filter((p) => p.isHomepage).map((p) => p.slug));
   let pagesRendered = 0;
 
   for (const page of allPages) {
     try {
       const html = renderPage(page, renderConfig, imageMap);
       await putHtml(env.CONTENT, config.siteId, page.slug, html);
+      // A homepage with a non-empty slug must also be served at the site root
+      if (homepageSlugs.has(page.slug) && page.slug !== "") {
+        await putHtml(env.CONTENT, config.siteId, "", html);
+      }
       pagesRendered++;
       console.log(`[renderer] Rendered: ${config.siteId}/${page.slug || "index"}`);
     } catch (err) {
@@ -122,7 +127,7 @@ export async function renderSiteFromConfig(
   // 6. Update last_published_at in D1
   try {
     await env.DB.prepare(
-      "UPDATE sites SET updated_at = ? WHERE id = ?",
+      "UPDATE sites SET last_published_at = ? WHERE id = ?",
     ).bind(Math.floor(Date.now() / 1000), config.siteId).run();
   } catch (err) {
     errors.push(`Failed to update last_published_at: ${err}`);

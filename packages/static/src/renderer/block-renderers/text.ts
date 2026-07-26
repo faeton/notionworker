@@ -1,5 +1,5 @@
 import type { NotionBlock } from "../../types.js";
-import type { ImageMap } from "../../fetcher/image-downloader.js";
+import type { ImageMap } from "../../types.js";
 import { renderRichText } from "../rich-text.js";
 
 /** Render text-like blocks: header, sub_header, sub_sub_header, text, quote, divider, callout */

@@ -74,7 +74,7 @@ export default {
 
     // If this slug maps to a page, try serving from R2 directly
     if (config.slugToPage[slug] !== undefined) {
-      const r2 = await tryR2Static(env, config, `${slug}/index.html`);
+      const r2 = await tryR2Static(env, config, slug ? `${slug}/index.html` : "index.html");
       if (r2) return r2;
       // Fall back to redirect for live proxy
       const pageId = config.slugToPage[slug];

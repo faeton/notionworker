@@ -4,7 +4,8 @@ import { extname, join } from "node:path";
 import type { NotionBlock, PageData } from "../types.js";
 
 /** Map of original URL → local path (relative to output dir) */
-export type ImageMap = Map<string, string>;
+import type { ImageMap } from "../types.js";
+export type { ImageMap };
 
 /** Max widths for Notion CDN server-side resize */
 const MAX_IMAGE_WIDTH = 1440;

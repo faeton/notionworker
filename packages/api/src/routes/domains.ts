@@ -38,8 +38,8 @@ domainsRouter.post("/", async (c) => {
     return c.json({ error: "Site not found" }, 404);
   }
 
-  // Check plan (custom domains require paid plan)
-  if (site.plan === "free") {
+  // Check plan (custom domains require paid plan) — fail closed on unknown plans
+  if (!site.plan || site.plan === "free") {
     return c.json({ error: "Custom domains require a paid plan" }, 403);
   }
 
@@ -50,6 +50,16 @@ domainsRouter.post("/", async (c) => {
   }
 
   const d1 = drizzle(c.env.DB);
+
+  const existing = await d1
+    .select({ id: domains.id })
+    .from(domains)
+    .where(eq(domains.hostname, hostname))
+    .limit(1);
+  if (existing.length > 0) {
+    return c.json({ error: "Domain is already registered" }, 409);
+  }
+
   const domainId = generateId();
   const now = new Date();
 

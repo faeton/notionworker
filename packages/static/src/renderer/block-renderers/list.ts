@@ -1,5 +1,5 @@
 import type { NotionBlock } from "../../types.js";
-import type { ImageMap } from "../../fetcher/image-downloader.js";
+import type { ImageMap } from "../../types.js";
 import { renderRichText } from "../rich-text.js";
 
 /** Render a single list item (without wrapper <ul>/<ol>) */

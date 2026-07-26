@@ -65,34 +65,47 @@ export async function exchangeCodeForToken(
   return (await res.json()) as NotionOAuthToken;
 }
 
-/** Search for pages shared with the integration */
+/** Search for pages shared with the integration (paginated, capped at 500) */
 export async function searchPages(
   accessToken: string,
   query = "",
 ): Promise<Array<{ id: string; title: string; icon?: string; url: string; lastEdited: string }>> {
-  const res = await fetch(`${NOTION_API}/search`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Notion-Version": NOTION_VERSION,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      query,
-      filter: { property: "object", value: "page" },
-      sort: { direction: "descending", timestamp: "last_edited_time" },
-      page_size: 100,
-    }),
-  });
+  const MAX_RESULTS = 500;
+  const results: Record<string, unknown>[] = [];
+  let cursor: string | null = null;
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Notion search failed: ${res.status} ${text}`);
-  }
+  do {
+    const res = await fetch(`${NOTION_API}/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Notion-Version": NOTION_VERSION,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query,
+        filter: { property: "object", value: "page" },
+        sort: { direction: "descending", timestamp: "last_edited_time" },
+        page_size: 100,
+        ...(cursor ? { start_cursor: cursor } : {}),
+      }),
+    });
 
-  const data = (await res.json()) as { results: Record<string, unknown>[] };
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Notion search failed: ${res.status} ${text}`);
+    }
 
-  return data.results.map((page) => {
+    const data = (await res.json()) as {
+      results: Record<string, unknown>[];
+      has_more: boolean;
+      next_cursor: string | null;
+    };
+    results.push(...data.results);
+    cursor = data.has_more && results.length < MAX_RESULTS ? data.next_cursor : null;
+  } while (cursor);
+
+  return results.map((page) => {
     const properties = page.properties as Record<string, unknown> | undefined;
     let title = "Untitled";
     if (properties) {

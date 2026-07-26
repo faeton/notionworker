@@ -3,7 +3,9 @@ import { loadConfigFromD1 } from "./config.js";
 
 const memoryCache = new Map<string, { config: SiteConfig; expiresAt: number }>();
 
-const MEMORY_TTL_MS = 5 * 60 * 1000; // 5 minutes
+// Kept short: KV purges on config mutations can't reach warm isolates,
+// so this TTL bounds how long a stale/reassigned hostname keeps serving
+const MEMORY_TTL_MS = 60 * 1000; // 1 minute
 const KV_TTL_SECONDS = 60 * 60; // 1 hour
 
 export async function getSiteConfig(

@@ -1,5 +1,5 @@
 import type { NotionBlock } from "../../types.js";
-import type { ImageMap } from "../../fetcher/image-downloader.js";
+import type { ImageMap } from "../../types.js";
 
 function escapeHtml(text: string): string {
   return text

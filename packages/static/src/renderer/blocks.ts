@@ -1,5 +1,5 @@
 import type { NotionBlock } from "../types.js";
-import type { ImageMap } from "../fetcher/image-downloader.js";
+import type { ImageMap } from "../types.js";
 import { renderTextBlock } from "./block-renderers/text.js";
 import { renderListItem } from "./block-renderers/list.js";
 import { renderMediaBlock } from "./block-renderers/media.js";

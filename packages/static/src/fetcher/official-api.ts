@@ -287,8 +287,12 @@ function translateBlock(block: OfficialBlock): NotionBlock {
         has_column_header?: boolean;
         has_row_header?: boolean;
       };
+      // The internal renderer walks format.table_block_column_order and looks up
+      // each cell by column ID — synthesize stable IDs c0..cN matching table_row below
+      const width = tableData.table_width ?? 0;
       result.format = {
         ...result.format,
+        table_block_column_order: Array.from({ length: width }, (_, i) => `c${i}`),
         table_block_column_header: tableData.has_column_header,
         table_block_row_header: tableData.has_row_header,
       };
@@ -298,18 +302,10 @@ function translateBlock(block: OfficialBlock): NotionBlock {
     case "table_row": {
       const cells = (content as { cells?: OfficialRichText[][] }).cells;
       if (cells) {
-        // Store each cell's rich text as properties
-        // Internal format: properties.title holds first cell; we'll encode all cells
-        // Table renderer reads from the block directly, so we store a custom format
         if (!result.properties) result.properties = {};
-        result.properties.title = cells.map((cell) => {
-          const text = cell.map((rt) => rt.plain_text).join("");
-          return [text] as [string];
-        }) as unknown as RichText;
-        // Also store the full rich text per cell for the table renderer
-        (result as unknown as Record<string, unknown>).__cells = cells.map(
-          (cell) => translateRichText(cell),
-        );
+        for (const [i, cell] of cells.entries()) {
+          (result.properties as Record<string, RichText>)[`c${i}`] = translateRichText(cell);
+        }
       }
       break;
     }

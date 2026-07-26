@@ -90,3 +90,6 @@ export interface PageData {
   /** Content block IDs (children of the page) */
   contentIds: string[];
 }
+
+/** Map of original image URL → local/hosted URL */
+export type ImageMap = Map<string, string>;

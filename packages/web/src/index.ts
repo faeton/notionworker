@@ -84,8 +84,16 @@ app.get("/connect", (c) => {
 
 /** POST /logout */
 app.post("/logout", async (c) => {
-  await apiCall(c.env, "/auth/logout", c.req.raw, { method: "POST" });
-  return c.redirect("/");
+  const res = await apiCall(c.env, "/auth/logout", c.req.raw, {
+    method: "POST",
+    redirect: "manual",
+  });
+
+  // Forward the API's Set-Cookie so the browser session cookie is actually cleared
+  const headers = new Headers({ Location: "/" });
+  const setCookie = res.headers.get("Set-Cookie");
+  if (setCookie) headers.append("Set-Cookie", setCookie);
+  return new Response(null, { status: 302, headers });
 });
 
 export default app;

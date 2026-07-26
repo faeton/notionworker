@@ -30,7 +30,7 @@ packages/
     src/
       index.ts         — fetch handler, route dispatch
       config.ts        — loadConfigFromD1(hostname, db) with platform domain resolution
-      cache.ts         — 3-layer cache: memory (5min) → KV (1hr) → D1
+      cache.ts         — 3-layer cache: memory (1min) → KV (1hr) → D1
       types.ts         — SiteConfig, ThemeConfig, PageConfig interfaces
       routes/
         robots.ts      — /robots.txt
