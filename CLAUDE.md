@@ -14,10 +14,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 worker.js              — legacy single-file proxy (kept for reference)
 packages/
   db/                  — Drizzle ORM schemas + D1 migrations
-    src/schema/        — platform_domains, sites, pages, domains, themes
-    drizzle/           — SQL migrations
+    src/schema/        — platform_domains, users, sessions, sites, pages, domains, themes
+    drizzle/           — SQL migrations (0000_init, 0001_users)
     seed.sql           — test data for smoke testing
-  proxy/               — Cloudflare Worker (TypeScript modules)
+  static/              — Notion block renderer + image pipeline (CLI + library)
+    src/fetcher/       — internal API, official API adapter, image download (fs + R2)
+    src/renderer/      — block/rich-text → HTML
+    src/template/      — page HTML, CSS, sitemap, robots
+  renderer/            — render pipeline: fetch → render → R2 (orchestrates static + db)
+  api/                 — Hono API worker (api.bl3s.com)
+    src/routes/        — auth (Notion OAuth), sites, pages, themes, domains, publish, webhooks
+    src/lib/           — notion client, sessions, util (ownership check, KV cache purge)
+  web/                 — dashboard worker (app.bl3s.com), server-rendered HTML, calls api
+  proxy/               — public-facing Cloudflare Worker (TypeScript modules)
     src/
       index.ts         — fetch handler, route dispatch
       config.ts        — loadConfigFromD1(hostname, db) with platform domain resolution
@@ -28,13 +37,13 @@ packages/
         sitemap.ts     — /sitemap.xml
         notion-api.ts  — /api/* forwarding
         notion-js.ts   — /app/*.js domain rewriting
-        page.ts        — default page fetch + HTMLRewriter
+        page.ts        — R2 static fast path → live Notion proxy fallback + HTMLRewriter
       rewriters/
         index.ts       — applyRewriters() orchestration
         meta.ts        — per-page SEO: title, description, og:*, twitter:*
         head.ts        — CSS variables, Google Font, base styles, topbar hiding, custom CSS/HTML
         body.ts        — navigation bar, slug URL rewriting JS, dark mode toggle, XHR rewriting
-    wrangler.toml      — D1 + KV bindings
+    wrangler.toml      — D1 + KV + R2 bindings
 scripts/
   smoke-test.sh        — curl-based smoke tests for deployed proxy
 ```
@@ -50,9 +59,11 @@ scripts/
 
 ### D1 Schema
 
-5 tables: `platform_domains`, `sites`, `pages`, `domains`, `themes`
+7 tables: `platform_domains`, `users`, `sessions`, `sites`, `pages`, `domains`, `themes`
 
 - `platform_domains` — registered platform domains (bl3s.com, ez.mt)
+- `users` — Notion OAuth users (access token, workspace)
+- `sessions` — cookie-based auth sessions (30-day TTL, random 256-bit IDs)
 - `sites` — each site has a subdomain on a platform domain + notion_username
 - `pages` — per-site page mappings (slug ↔ notion_page_id) with individual SEO meta
 - `domains` — custom domain → site linkage
@@ -79,6 +90,10 @@ Color mode supports: `light`, `dark`, `system` (via `prefers-color-scheme` media
 User custom CSS is injected after theme CSS for override capability.
 
 ## Key Patterns
+
+- API route handlers must check site ownership via `getOwnedSite(db, siteId, userId)` (packages/api/src/lib/util.ts) and call `purgeSiteCache(env, siteId)` after any mutation that changes what the proxy serves
+- Never spread a raw request body into a Drizzle `.set()`/`.values()` — whitelist fields explicitly (`plan`, `userId` etc. must not be client-writable)
+- API secrets (`NOTION_CLIENT_SECRET`, `NOTION_WEBHOOK_SECRET`) go in `wrangler secret put`, never in `[vars]`
 
 - All config flows through `SiteConfig` interface (not global variables)
 - HTMLRewriter classes receive config via constructor

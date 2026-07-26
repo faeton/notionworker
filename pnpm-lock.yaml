@@ -15,6 +15,31 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
+  packages/api:
+    dependencies:
+      '@notionworker/db':
+        specifier: workspace:*
+        version: link:../db
+      '@notionworker/renderer':
+        specifier: workspace:*
+        version: link:../renderer
+      drizzle-orm:
+        specifier: ^0.38.0
+        version: 0.38.4(@cloudflare/workers-types@4.20260228.0)
+      hono:
+        specifier: ^4.7.0
+        version: 4.12.1
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20241230.0
+        version: 4.20260228.0
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      wrangler:
+        specifier: ^3.99.0
+        version: 3.114.17(@cloudflare/workers-types@4.20260228.0)
+
   packages/db:
     dependencies:
       drizzle-orm:
@@ -47,6 +72,25 @@ importers:
         specifier: ^3.99.0
         version: 3.114.17(@cloudflare/workers-types@4.20260228.0)
 
+  packages/renderer:
+    dependencies:
+      '@notionworker/db':
+        specifier: workspace:*
+        version: link:../db
+      '@notionworker/static':
+        specifier: workspace:*
+        version: link:../static
+      drizzle-orm:
+        specifier: ^0.38.0
+        version: 0.38.4(@cloudflare/workers-types@4.20260228.0)
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20241230.0
+        version: 4.20260228.0
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
   packages/static:
     devDependencies:
       '@types/node':
@@ -55,6 +99,22 @@ importers:
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
+
+  packages/web:
+    dependencies:
+      hono:
+        specifier: ^4.7.0
+        version: 4.12.1
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20241230.0
+        version: 4.20260228.0
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      wrangler:
+        specifier: ^3.99.0
+        version: 3.114.17(@cloudflare/workers-types@4.20260228.0)
 
 packages:
 
@@ -879,6 +939,10 @@ packages:
   glob-to-regexp@0.4.1:
     resolution: {integrity: sha512-lkX1HJXwyMcprw/5YUZc2s7DrpAiHB21/V+E1rHUrVNokkvB6bqMzT0VfV6/86ZNabt1k14YOIaT7nDvOX3Iiw==}
 
+  hono@4.12.1:
+    resolution: {integrity: sha512-hi9afu8g0lfJVLolxElAZGANCTTl6bewIdsRNhaywfP9K8BPf++F2z6OLrYGIinUwpRKzbZHMhPwvc0ZEpAwGw==}
+    engines: {node: '>=16.9.0'}
+
   is-arrayish@0.3.4:
     resolution: {integrity: sha512-m6UrgzFVUYawGBh1dUsWR5M2Clqic9RVXC/9f8ceNlv2IcO9j9J/z8UoCLPqtsPBFNzEpfR3xftohbfqDx8EQA==}
 
@@ -1587,6 +1651,8 @@ snapshots:
       resolve-pkg-maps: 1.0.0
 
   glob-to-regexp@0.4.1: {}
+
+  hono@4.12.1: {}
 
   is-arrayish@0.3.4:
     optional: true

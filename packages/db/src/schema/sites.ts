@@ -1,5 +1,6 @@
 import { sqliteTable, text, integer, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { platformDomains } from "./platform-domains.js";
+import { users } from "./users.js";
 
 export const sites = sqliteTable(
   "sites",
@@ -11,6 +12,8 @@ export const sites = sqliteTable(
       .notNull()
       .references(() => platformDomains.id),
     notionUsername: text("notion_username").notNull(),
+    userId: text("user_id").references(() => users.id),
+    plan: text("plan").default("free"),
     isPublic: integer("is_public", { mode: "boolean" }).notNull().default(true),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),

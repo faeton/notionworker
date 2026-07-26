@@ -4,7 +4,7 @@ import { handleRobots } from "./routes/robots.js";
 import { handleSitemap } from "./routes/sitemap.js";
 import { handleNotionApi } from "./routes/notion-api.js";
 import { handleNotionJs } from "./routes/notion-js.js";
-import { handlePage } from "./routes/page.js";
+import { handlePage, tryR2Static } from "./routes/page.js";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -49,10 +49,15 @@ export default {
 
     // Route dispatch
     if (url.pathname === "/robots.txt") {
+      // Try R2 first, fall back to dynamic generation
+      const r2 = await tryR2Static(env, config, "robots.txt");
+      if (r2) return r2;
       return handleRobots(config);
     }
 
     if (url.pathname === "/sitemap.xml") {
+      const r2 = await tryR2Static(env, config, "sitemap.xml");
+      if (r2) return r2;
       return handleSitemap(config);
     }
 
@@ -64,9 +69,14 @@ export default {
       return handleNotionApi(request, url, config);
     }
 
-    // Slug → redirect to Notion page ID
+    // Slug → redirect to Notion page ID (only needed for live proxy mode)
     const slug = url.pathname.slice(1);
+
+    // If this slug maps to a page, try serving from R2 directly
     if (config.slugToPage[slug] !== undefined) {
+      const r2 = await tryR2Static(env, config, `${slug}/index.html`);
+      if (r2) return r2;
+      // Fall back to redirect for live proxy
       const pageId = config.slugToPage[slug];
       console.log(`[proxy] slug redirect: /${slug} → /${pageId}`);
       return Response.redirect(`https://${config.hostname}/${pageId}`, 301);
@@ -81,7 +91,7 @@ export default {
       return Response.redirect(`https://${config.hostname}`, 301);
     }
 
-    // Default: fetch and rewrite the Notion page
-    return handlePage(request, url, config);
+    // Default: try R2 static → fall back to live Notion proxy
+    return handlePage(request, url, config, env);
   },
 };

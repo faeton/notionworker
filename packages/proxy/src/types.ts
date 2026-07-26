@@ -1,6 +1,7 @@
 export interface Env {
   DB: D1Database;
   SITE_CACHE: KVNamespace;
+  CONTENT: R2Bucket;
 }
 
 export interface PageConfig {

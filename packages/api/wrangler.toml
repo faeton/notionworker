@@ -1,0 +1,30 @@
+name = "notionworker-api"
+main = "src/index.ts"
+compatibility_date = "2024-12-30"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "notionworker-db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+[[r2_buckets]]
+binding = "CONTENT"
+bucket_name = "notionworker-content"
+
+# Same KV namespace as the proxy's SITE_CACHE — purged when site config changes
+[[kv_namespaces]]
+binding = "SITE_CACHE"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[vars]
+R2_PUBLIC_URL = "https://cdn.bl3s.com"
+NOTION_CLIENT_ID = ""
+NOTION_REDIRECT_URI = "https://api.bl3s.com/auth/callback"
+DASHBOARD_URL = "https://app.bl3s.com"
+COOKIE_DOMAIN = ".bl3s.com"
+# CF_API_TOKEN = "" # For custom hostnames API
+# CF_ZONE_ID = ""
+
+# Secrets — set with `wrangler secret put <NAME>`, never in [vars]:
+#   NOTION_CLIENT_SECRET   — Notion OAuth client secret
+#   NOTION_WEBHOOK_SECRET  — Notion webhook verification token

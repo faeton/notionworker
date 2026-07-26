@@ -13,6 +13,11 @@ database_id = "REPLACE_WITH_D1_DATABASE_ID"
 binding = "SITE_CACHE"
 id = "REPLACE_WITH_KV_NAMESPACE_ID"
 
+# R2 bucket for pre-rendered static content
+[[r2_buckets]]
+binding = "CONTENT"
+bucket_name = "notionworker-content"
+
 # Routes - uncomment and configure for production
 # [env.production]
 # routes = [
