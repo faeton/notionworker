@@ -2,7 +2,7 @@
 # Smoke test script for notionworker proxy
 # Usage: ./scripts/smoke-test.sh [base_url]
 # Example: ./scripts/smoke-test.sh http://localhost:8787
-#          ./scripts/smoke-test.sh https://testsite.bl3s.com
+#          ./scripts/smoke-test.sh https://testsite.example.com
 
 set -euo pipefail
 

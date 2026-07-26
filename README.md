@@ -1,107 +1,122 @@
-# Notion Domain Proxy
+# notionworker
 
-A Cloudflare Workers project that lets you host Notion pages on your own custom domain with enhanced features like dark mode, custom fonts, SEO optimization, and the option to hardcode your settings for a single domain.
+Host Notion pages as fast websites on your own domains, running entirely on Cloudflare Workers.
+
+Point a domain at the worker, map slugs to Notion pages, and get a clean website with custom fonts, dark mode, SEO meta tags, sitemaps, and navigation — no servers, no build pipeline to babysit.
+
+There are two ways to use this project:
+
+| | Best for | What you deploy |
+|---|---|---|
+| **[Single-site proxy](#single-site-proxy-simple)** | Your own site on one domain | `worker.js`, one file |
+| **[Multi-tenant platform](#multi-tenant-platform)** | Hosting many sites/users, SaaS-style | The `packages/` monorepo (3 workers + D1 + KV + R2) |
 
 ## Features
 
-- **Custom Domain**: Host your Notion pages on your own domain
-- **SEO Optimization**: Customize meta tags such as page title, description, and Open Graph tags
-- **Dark Mode**: Automatically detects system preferences and allows manual toggling
-- **Custom Fonts**: Easily integrate Google Fonts
-- **Clean UI**: Removes Notion's default navigation elements
-- **Sitemap Generation**: Automatically creates a sitemap.xml for search engines
-- **URL Slugs**: Map custom, human-readable slugs to Notion page IDs
-- **Manual Configuration**: Optionally hardcode your domain settings without using KV storage
+- **Custom domains** — serve Notion pages from any domain you control
+- **URL slugs** — `/about` instead of `/1a2b3c4d…` page IDs
+- **Per-page SEO** — title, description, Open Graph and Twitter meta per page
+- **Theming** — Google Fonts, accent colors, max width, custom CSS/HTML, light/dark/system color mode
+- **Navigation bar** — configurable links injected into every page
+- **Sitemap & robots.txt** — generated automatically
+- **Static pre-rendering** (platform mode) — pages render to HTML in R2 and are served from the edge, with live proxying as fallback
+- **Notion OAuth dashboard** (platform mode) — users connect their Notion workspace, pick pages, publish
+- **Webhooks** (platform mode) — Notion page edits trigger automatic re-renders
 
-## How It Works
+## Single-site proxy (simple)
 
-The worker acts as a proxy between your custom domain and Notion. When a visitor accesses your domain, the worker:
+`worker.js` is a self-contained Cloudflare Worker. Set `MY_NOTION_USERNAME` to your Notion username, deploy, then either:
 
-1. Retrieves the domain configuration
-2. Fetches the corresponding Notion page
-3. Applies custom modifications (like SEO meta tags, dark mode toggle, and custom fonts)
-4. Handles URL routing and slug redirection
-5. Returns the modified page to the visitor
-
-## Setup
-
-### 1. Configuration
-
-By default, the worker uses Cloudflare KV storage to store configurations for multiple domains. Each domain configuration should follow this structure:
+1. **KV config**: create a KV namespace `DOMAINS_CONFIG` and add a JSON config per hostname:
 
 ```json
 {
   "SLUG_TO_PAGE": {
-    "": "homepage-notion-id",
-    "about": "about-page-notion-id",
-    "contact": "contact-page-notion-id"
+    "": "homepage-notion-page-id",
+    "about": "about-page-notion-id"
   },
   "PAGE_TITLE": "Your Site Title",
-  "PAGE_DESCRIPTION": "Your site description for SEO",
-  "GOOGLE_FONT": "Font Name",
-  "CUSTOM_SCRIPT": "<script>console.log('Custom JavaScript');</script>"
+  "PAGE_DESCRIPTION": "Your site description",
+  "GOOGLE_FONT": "Inter",
+  "CUSTOM_SCRIPT": ""
 }
 ```
 
-If you only need to host a single domain and prefer not to use KV storage, simply uncomment and configure the `manualConfig` object in the script. When `manualConfig` is defined, the script auto-detects its presence and uses those settings instead of fetching from KV.
+2. **Hardcoded config**: uncomment and fill the `manualConfig` object at the top of `worker.js` — no KV needed.
 
-### 2. Deployment
+Then add your domain to Cloudflare and route it to the worker.
 
-1. Create a Cloudflare Workers account
-2. If using KV storage, create a KV namespace called `DOMAINS_CONFIG`
-3. Deploy this worker script to Cloudflare
-4. Add your domain configuration to the KV namespace (if not using `manualConfig`)
+## Multi-tenant platform
 
-### 3. DNS Setup
-
-1. Add your custom domain to Cloudflare
-2. Point your domain to the Cloudflare Worker
-
-## Features Explained
-
-### Custom Slugs
-
-Instead of using Notion's long page IDs in URLs, you can map them to readable slugs:
+A pnpm/Turborepo monorepo of three Workers plus shared packages:
 
 ```
-https://yourdomain.com/about instead of https://yourdomain.com/83f7dd5879884c5f89326a1541629b20
+packages/
+  proxy/      public-facing worker: serves sites (R2 static fast path → live Notion proxy fallback)
+  api/        Hono API: Notion OAuth, sessions, CRUD for sites/pages/themes/domains, publish, webhooks
+  web/        dashboard: server-rendered HTML, talks to the api worker
+  renderer/   render pipeline: fetch Notion → render HTML → upload to R2
+  static/     Notion block renderer + image pipeline (also usable standalone as a CLI static-site generator)
+  db/         Drizzle ORM schemas + D1 migrations
 ```
 
-### Dark Mode Toggle
+**Request flow:** visitor hits `proxy` → site config resolved by hostname (memory → KV → D1 cache) → pre-rendered HTML served from R2, or the Notion page is fetched live and rewritten via HTMLRewriter.
 
-The worker injects a dark mode toggle that:
-- Detects user system preferences
-- Allows manual toggling
-- Persists the chosen mode during navigation
+**Publishing flow:** user connects Notion via OAuth in `web` → picks pages → `api` renders them through `renderer` into R2 → `proxy` serves the static copies. Notion webhooks re-render pages on edit.
 
-### SEO Optimization
+### Setup
 
-Improve search engine visibility by customizing meta tags such as:
-- Page title
-- Page description
-- Open Graph and Twitter tags
+Prerequisites: a Cloudflare account, `wrangler` logged in, `pnpm`, and (for OAuth) a [Notion public integration](https://developers.notion.com/docs/authorization).
 
-### Manual Configuration
+```bash
+pnpm install
 
-For those with only a single domain or who wish to avoid using KV storage, simply uncomment and configure the `manualConfig` object in the script. The script auto-detects manual configuration if it exists and uses it instead of fetching from KV.
+# 1. Create resources
+wrangler d1 create notionworker-db
+wrangler kv namespace create SITE_CACHE
+wrangler r2 bucket create notionworker-content
 
-### Notion Username
+# 2. Fill in the IDs
+#    packages/proxy/wrangler.toml  — D1 id, KV id (R2 bucket name is preset)
+#    packages/api/wrangler.toml    — D1 id, KV id (must be the SAME KV namespace as proxy),
+#                                    plus your domains in [vars]
+#    packages/web/wrangler.toml    — API_BASE_URL
 
-The variable `MY_NOTION_USERNAME` (formerly `MY_NOTION_DOMAIN`) should be set to your Notion username. This value is used to construct the target Notion URL for proxying.
+# 3. Apply schema
+cd packages/proxy
+wrangler d1 execute notionworker-db --remote --file=../db/drizzle/0000_init.sql
+wrangler d1 execute notionworker-db --remote --file=../db/drizzle/0001_users.sql
+# optional test data:
+wrangler d1 execute notionworker-db --remote --file=../db/seed.sql
 
-### Multiple Domains
+# 4. Secrets (api worker)
+cd ../api
+wrangler secret put NOTION_CLIENT_SECRET     # from your Notion integration
+wrangler secret put NOTION_WEBHOOK_SECRET    # Notion webhook verification token
 
-When no manual configuration is provided, the worker uses KV storage to manage configurations for multiple domains, automatically selecting the correct configuration based on the incoming domain.
+# 5. Deploy all three workers
+cd ../proxy && npx wrangler deploy
+cd ../api   && npx wrangler deploy
+cd ../web   && npx wrangler deploy
+```
 
-## Troubleshooting
+**DNS:** route your platform domain's wildcard (e.g. `*.example.com`) to the `proxy` worker, and pick subdomains for `api` and the dashboard (e.g. `api.example.com`, `app.example.com`) matching the `[vars]` in the wrangler configs. Custom customer domains use [Cloudflare for SaaS custom hostnames](https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/) (set `CF_API_TOKEN` / `CF_ZONE_ID`).
 
-**Domain not found**: Ensure your domain configuration exists in KV storage or is defined via `manualConfig`.
+**Notion OAuth:** create a public integration, set the redirect URI to `https://api.<your-domain>/auth/callback`, and put the client ID in `packages/api/wrangler.toml`.
 
-**Styling issues**: Custom fonts or CSS might conflict with Notion's default styles. Experiment with different settings.
+### Development
 
-**Incorrect redirects**: Double-check your SLUG_TO_PAGE mappings and Notion page IDs.
+```bash
+pnpm install
+cd packages/proxy && npx wrangler dev        # local dev server
+cd packages/api && npx tsc --noEmit          # typecheck
+cd packages/db && npx drizzle-kit generate   # generate migration from schema changes
+./scripts/smoke-test.sh https://yoursite.example.com   # smoke-test a deployed site
+```
 
+## Status
 
+Functional and typechecked, but young — it has not seen heavy production traffic. Review the code (especially `packages/api`) before hosting other people's content, and open issues/PRs for anything you find.
 
 ## Contributing
 
@@ -109,4 +124,4 @@ Contributions are welcome! Feel free to submit pull requests for new features, i
 
 ## License
 
-This project is available under the MIT License.
+[MIT](LICENSE)

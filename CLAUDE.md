@@ -22,10 +22,10 @@ packages/
     src/renderer/      — block/rich-text → HTML
     src/template/      — page HTML, CSS, sitemap, robots
   renderer/            — render pipeline: fetch → render → R2 (orchestrates static + db)
-  api/                 — Hono API worker (api.bl3s.com)
+  api/                 — Hono API worker (api.example.com)
     src/routes/        — auth (Notion OAuth), sites, pages, themes, domains, publish, webhooks
     src/lib/           — notion client, sessions, util (ownership check, KV cache purge)
-  web/                 — dashboard worker (app.bl3s.com), server-rendered HTML, calls api
+  web/                 — dashboard worker (app.example.com), server-rendered HTML, calls api
   proxy/               — public-facing Cloudflare Worker (TypeScript modules)
     src/
       index.ts         — fetch handler, route dispatch
@@ -61,7 +61,7 @@ scripts/
 
 7 tables: `platform_domains`, `users`, `sessions`, `sites`, `pages`, `domains`, `themes`
 
-- `platform_domains` — registered platform domains (bl3s.com, ez.mt)
+- `platform_domains` — registered platform domains (e.g. example.com)
 - `users` — Notion OAuth users (access token, workspace)
 - `sessions` — cookie-based auth sessions (30-day TTL, random 256-bit IDs)
 - `sites` — each site has a subdomain on a platform domain + notion_username
@@ -123,7 +123,7 @@ wrangler d1 execute notionworker-db --file=../db/seed.sql
 cd packages/proxy && wrangler deploy
 
 # Smoke test
-./scripts/smoke-test.sh https://testsite.bl3s.com
+./scripts/smoke-test.sh https://testsite.example.com
 ```
 
 ## Commands

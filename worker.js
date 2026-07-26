@@ -18,7 +18,7 @@ const manualConfig = {
 */
 
 // Set your Notion username; this is used to form the target Notion URL.
-const MY_NOTION_USERNAME = 'faeton';
+const MY_NOTION_USERNAME = 'your-notion-username';
 
 // KV configuration cache for multi-domain usage.
 const domainConfigCache = new Map();

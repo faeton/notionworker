@@ -3,15 +3,15 @@
 
 -- Platform domains
 INSERT INTO platform_domains (id, domain, is_active, created_at) VALUES
-  ('pd_1', 'bl3s.com', 1, 1708000000),
-  ('pd_2', 'ez.mt', 1, 1708000000);
+  ('pd_1', 'example.com', 1, 1708000000),
+  ('pd_2', 'example.org', 1, 1708000000);
 
 -- Sites
--- testsite on bl3s.com (faeton's notion)
+-- testsite on example.com (your-notion-username's notion)
 INSERT INTO sites (id, name, subdomain, platform_domain_id, notion_username, is_public, created_at, updated_at) VALUES
-  ('site_1', 'Test Site', 'testsite', 'pd_1', 'faeton', 1, 1708000000, 1708000000),
-  ('site_2', 'Demo Site', 'demo', 'pd_1', 'faeton', 1, 1708000000, 1708000000),
-  ('site_3', 'Hello Site', 'hello', 'pd_2', 'faeton', 1, 1708000000, 1708000000);
+  ('site_1', 'Test Site', 'testsite', 'pd_1', 'your-notion-username', 1, 1708000000, 1708000000),
+  ('site_2', 'Demo Site', 'demo', 'pd_1', 'your-notion-username', 1, 1708000000, 1708000000),
+  ('site_3', 'Hello Site', 'hello', 'pd_2', 'your-notion-username', 1, 1708000000, 1708000000);
 
 -- Pages for testsite (site_1)
 -- Replace these notion_page_id values with real Notion page IDs for testing
@@ -27,7 +27,7 @@ INSERT INTO pages (id, site_id, notion_page_id, slug, title, description, og_ima
 
 -- Pages for hello (site_3)
 INSERT INTO pages (id, site_id, notion_page_id, slug, title, description, og_image, is_homepage, sort_order, created_at, updated_at) VALUES
-  ('page_6', 'site_3', 'REPLACE_WITH_REAL_NOTION_PAGE_ID_6', '', 'Hello World', 'A site on ez.mt', NULL, 1, 0, 1708000000, 1708000000),
+  ('page_6', 'site_3', 'REPLACE_WITH_REAL_NOTION_PAGE_ID_6', '', 'Hello World', 'A site on example.org', NULL, 1, 0, 1708000000, 1708000000),
   ('page_7', 'site_3', 'REPLACE_WITH_REAL_NOTION_PAGE_ID_7', 'blog', 'Blog', 'Our blog posts', NULL, 0, 1, 1708000000, 1708000000);
 
 -- Custom domain pointing to testsite

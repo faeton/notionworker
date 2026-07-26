@@ -3,4 +3,4 @@ main = "src/index.ts"
 compatibility_date = "2024-12-30"
 
 [vars]
-API_BASE_URL = "https://api.bl3s.com"
+API_BASE_URL = "https://api.example.com"

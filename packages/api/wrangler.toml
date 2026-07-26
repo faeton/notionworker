@@ -17,11 +17,11 @@ binding = "SITE_CACHE"
 id = "REPLACE_WITH_KV_NAMESPACE_ID"
 
 [vars]
-R2_PUBLIC_URL = "https://cdn.bl3s.com"
+R2_PUBLIC_URL = "https://cdn.example.com"
 NOTION_CLIENT_ID = ""
-NOTION_REDIRECT_URI = "https://api.bl3s.com/auth/callback"
-DASHBOARD_URL = "https://app.bl3s.com"
-COOKIE_DOMAIN = ".bl3s.com"
+NOTION_REDIRECT_URI = "https://api.example.com/auth/callback"
+DASHBOARD_URL = "https://app.example.com"
+COOKIE_DOMAIN = ".example.com"
 # CF_API_TOKEN = "" # For custom hostnames API
 # CF_ZONE_ID = ""
 
